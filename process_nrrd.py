@@ -3,8 +3,8 @@ import numpy as np
 from PIL import Image
 import os
 
-#path to file 
-file_path = "C:/Users/diego/Bac Sport and Computer Science/Documents/BA-arbeit/20112024/VL_009_MZP2.nrrd"
+#path to file
+file_path = "C:/Users/diego/Bac Sport and Computer Science/Documents/BA-arbeit/RepoBA/VL_009_MZP2.nrrd"
 output_folder = "output_slices"  
 #create the folder
 os.makedirs(output_folder, exist_ok=True)
