@@ -1,3 +1,0 @@
-epoch,accuracy,hausdorff_distance,iou,tversky_loss,val_dice_similarity_coefficient,val_loss
-0,0.019580318,nan,0.31517854,0.25739208,nan,nan
-1,0.049529184,nan,0.35940325,0.18004629,nan,nan

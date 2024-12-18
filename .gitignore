@@ -1,2 +1,3 @@
-IFSS_Net-IFSS_conv/exported_data
+data
 IFSS_Net-IFSS_conv/__pycache__
+IFSS_Net-IFSS_conv/training_log.csv

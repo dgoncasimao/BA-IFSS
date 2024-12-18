@@ -1,7 +1,7 @@
 # BA-IFSS: Bachelor Thesis on Interactive Few-Shot Siamese Network
 
 ## Overview
-BA-IFSS (Bachelor Thesis on Interactive Few-Shot Siamese Network) is a machine learning framework for segmenting and analyzing biomedical volumes in 3D. This repository provides tools for preprocessing volumetric data, training deep learning models, and generating accurate segmentations using advanced neural network architectures.
+BA-IFSS (Bachelor Thesis on Interactive Few-Shot Siamese Network) is a machine learning framework for segmenting and analyzing biomedical volumes in 3D. This repository provides tools for preprocessing volumetric data, training deep learning models, and generating accurate segmentations using advanced neural network architectures. Takes the network from https://github.com/DawoodChanti/IFSS-Net (OLDREADME.md)
 
 ## Installation
 
@@ -14,7 +14,7 @@ Ensure you have the following installed:
 1. Clone the repository:
    ```bash
    git clone https://github.com/dgoncasimao/BA-IFSS.git
-   cd BA-IFSS
+   cd IF_Net-IFSS_conv/
    ```
 
 2. Install dependencies using pip:
