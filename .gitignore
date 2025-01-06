@@ -1,4 +1,5 @@
 data
+.vscode
 IFSS_Net-IFSS_conv/__pycache__
 IFSS_Net-IFSS_conv/training_log.csv
 utils/__pycache__
