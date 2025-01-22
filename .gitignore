@@ -3,3 +3,5 @@ data
 IFSS_Net-IFSS_conv/__pycache__
 IFSS_Net-IFSS_conv/training_log.csv
 utils/__pycache__
+VGG/K-foldno1-VGG16-V1-VL-BFRHL-256.csv
+VGG/K-foldno1-VGG16-V1-VL-BFRHL-256.keras
