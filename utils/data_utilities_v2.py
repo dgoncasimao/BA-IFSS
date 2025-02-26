@@ -289,3 +289,278 @@ def Pull_mask_from_path(path):
 def Patient_name(diretoryPathforOnePatient):
     return diretoryPathforOnePatient.split('/')[4]
 
+
+# File Format Requirements:
+# 1. Input Data Structure:
+#    - The data should be organized in a directory structure as follows:
+#      raw_data/
+#        |- <patient_number>/
+#        |   |- <mzp_folder>/
+#        |       |- VL_<mzp_folder>_<patient_number>.nrrd
+#        |       |- Segmentation_VL_<mzp_folder>_<patient_number>.seg.nrrd
+#    - Example:
+#      raw_data/
+#        |- 001/
+#        |   |- MZP1/
+#        |       |- VL_MZP1_001.nrrd
+#        |       |- Segmentation_VL_MZP1_001.seg.nrrd
+#        |   |- MZP2/
+#        |       |- VL_MZP2_001.nrrd
+#        |       |- Segmentation_VL_MZP2_001.seg.nrrd
+#
+# 2. File Naming Conventions:
+#    - Volume file: `VL_<mzp_folder>_<patient_number>.nrrd`
+#    - Mask file: `Segmentation_VL_<mzp_folder>_<patient_number>.seg.nrrd`
+#
+# 3. Output Data Structure:
+#    - The results will be saved in a mirrored directory structure under `analyzed_data`:
+#      analyzed_data/
+#        |- <patient_number>/
+#        |   |- <mzp_folder>/
+#        |       |- volume/
+#        |       |   |- volume_000.tif
+#        |       |   |- volume_001.tif
+#        |       |- mask/
+#        |           |- mask_000.tif
+#        |           |- mask_001.tif
+#
+# Usage:
+# - To process all patients in the `raw_data` directory, use the batch processing function.
+# - To process a single patient, provide the exact file paths for the volume and mask files.
+ 
+import os
+import nrrd
+import numpy as np
+from PIL import Image
+import shutil
+
+def crop_image_get_bounds(image, threshold):
+    """
+    Calculate cropping bounds dynamically based on the threshold.
+    Args:
+    - image: 2D numpy array to crop
+    - threshold: minimum pixel intensity to consider as non-black
+    Returns:
+    - cropping bounds (rmin, rmax, cmin, cmax) or None if the image is completely black
+    """
+
+    rows = np.any(image > threshold, axis=1)
+    cols = np.any(image > threshold, axis=0)
+
+    if not np.any(rows) or not np.any(cols):  # Check if the image is black
+        return None
+
+    # Find significant borders
+    rmin, rmax = np.where(rows)[0][[0, -1]]
+    cmin, cmax = np.where(cols)[0][[0, -1]]
+    return rmin, rmax, cmin, cmax
+
+def apply_crop(image, bounds):
+    """
+    Apply cropping bounds to the image.
+    Args:
+    - image: 2D numpy array to crop
+    - bounds: cropping bounds (rmin, rmax, cmin, cmax)
+    Returns:
+    - Cropped image or None if bounds are invalid
+    """
+    if bounds is None:
+        return None
+    rmin, rmax, cmin, cmax = bounds
+    return image[rmin:rmax+1, cmin:cmax+1]
+
+def resize_with_padding(image, target_size=(512, 512)):
+    """
+    Resize the image with padding to maintain aspect ratio.
+    
+    Args:
+    - image: 2D numpy array (grayscale image)
+    - target_size: Desired output size (height, width)
+
+    Returns:
+    - Padded image as a 2D numpy array
+    """
+    old_size = image.shape  # Original size (height, width)
+    desired_size = target_size
+
+    # Compute padding
+    delta_w = max(desired_size[1] - old_size[1], 0)
+    delta_h = max(desired_size[0] - old_size[0], 0)
+    top, bottom = delta_h // 2, delta_h - (delta_h // 2)
+    left, right = delta_w // 2, delta_w - (delta_w // 2)
+
+    # Apply padding with black (0)
+    padded_image = np.pad(image, ((top, bottom), (left, right)), mode='constant', constant_values=0)
+
+    return padded_image
+
+
+def export_to_tif_with_threshold(volume_data, mask_data, output_dir_volume, output_dir_mask, threshold=10):
+    """
+    Exports a 3D array to .tif files, one slice per file, after cropping and normalization.
+    Args:
+    - volume_data: 3D numpy array of the volume
+    - mask_data: 3D numpy array of the mask
+    - output_dir_volume: folder to save the volume slices
+    - output_dir_mask: folder to save the mask slices
+    - threshold: pixel intensity threshold for black image filtering
+    """
+    exported_count = 0  # Count valid slices
+
+    for i in range(volume_data.shape[2]):  # Loop through each slice
+        slice_volume = volume_data[:, :, i]
+        slice_mask = mask_data[:, :, i]
+
+        # Apply the mask
+        masked_volume = slice_volume * slice_mask
+
+        # Check if the masked volume is black
+        if not np.any(masked_volume > threshold):
+            continue  
+        
+        # Calculate cropping bounds from the volume slice
+        bounds = crop_image_get_bounds(slice_volume, threshold)
+
+        # Crop both volume and mask using the same bounds
+        cropped_volume = apply_crop(slice_volume, bounds)
+        cropped_mask = apply_crop(slice_mask, bounds)
+        
+        # Skip if the cropped slice is black or invalid
+        if cropped_volume is None or cropped_mask is None:
+            continue
+        
+        # Normalize the slices to range [0, 255]
+        volume_normalized = ((cropped_volume - np.min(cropped_volume)) /
+                            (np.ptp(cropped_volume) + 1e-5) * 255).astype(np.uint8)
+        mask_normalized = ((cropped_mask - np.min(cropped_mask)) /
+                          (np.ptp(cropped_mask) + 1e-5) * 255).astype(np.uint8)
+        
+        # Normalize the slices to range [0, 255]
+        volume_normalized = ((slice_volume - np.min(slice_volume)) /
+                            (np.ptp(slice_volume) + 1e-5) * 255).astype(np.uint8)
+        mask_normalized = ((slice_mask - np.min(slice_mask)) /
+                          (np.ptp(slice_mask) + 1e-5) * 255).astype(np.uint8)
+        
+        # Resize with padding to 512x512
+        volume_resized = resize_with_padding(volume_normalized, target_size=(512, 512))
+        mask_resized = resize_with_padding(mask_normalized, target_size=(512, 512))
+
+        # Save slices as .tif files
+        volume_path = os.path.join(output_dir_volume, f"frame_{exported_count:05d}.tif")
+        mask_path = os.path.join(output_dir_mask, f"frame_{exported_count:05d}.tif")
+        Image.fromarray(volume_resized).save(volume_path)
+        Image.fromarray(mask_resized).save(mask_path)
+
+        exported_count += 1
+import traceback 
+def process_raw_data(raw_data_path, analyzed_data_path, threshold=10):
+    """
+    Process all patient subdirectories to crop and export volume and mask data.
+    Args:
+    - raw_data_path: base path of the raw data directory *The segmentation and the volume need to be saved in the following way: VL_MZP#_patientnumber.nrrd, Segmentation_VL_MZP#_patientnumber.seg.nrrd*
+    - analyzed_data_path: base path for the output directory
+    - threshold: pixel intensity threshold for black image filtering
+    """
+    for patient_folder in sorted(os.listdir(raw_data_path)):
+        patient_path = os.path.join(raw_data_path, patient_folder)
+        if not os.path.isdir(patient_path):
+            continue
+
+        for mzp_folder in sorted(os.listdir(patient_path)):
+            mzp_path = os.path.join(patient_path, mzp_folder)
+            if not os.path.isdir(mzp_path):
+                continue
+
+            # Construct file names dynamically using patient number and MZP folder
+            # Extract numeric part and format as 00#
+            patient_number = patient_folder
+            volume_file = os.path.join(mzp_path, f"VL_{mzp_folder}_{patient_number}.nrrd")
+            mask_file = os.path.join(mzp_path, f"Segmentation_VL_{mzp_folder}_{patient_number}.seg.nrrd")
+
+            if os.path.exists(volume_file) and os.path.exists(mask_file):
+                # Read the volume and mask data
+                volume_data, _ = nrrd.read(volume_file)
+                mask_data, _ = nrrd.read(mask_file)
+
+                # Define output folder for the current MZP
+                output_folder = analyzed_data_path
+
+                # Convert `00#` back to `Patient#`
+                patient_folder_name = f"Patient{int(patient_number)}"
+                # Export to .tif
+                output_volume_dir = os.path.join(output_folder, "volume", patient_folder_name, mzp_folder)
+                if not os.path.exists(output_volume_dir):
+                    os.makedirs(output_volume_dir)
+                output_mask_dir = os.path.join(output_folder, "mask", patient_folder_name, mzp_folder)
+                if not os.path.exists(output_mask_dir):
+                    os.makedirs(output_mask_dir)
+                
+                
+                try:
+                    export_to_tif_with_threshold(volume_data, mask_data, output_volume_dir, output_mask_dir, threshold=threshold)
+                except Exception as e:
+                    print(patient_number, mzp_folder)
+                    traceback.print_exc()
+
+import os
+import nrrd
+import numpy as np
+from PIL import Image
+import shutil
+
+#implement a way to outout the compact
+def process_single_patient(patient_number, mzp_folder, volume_file_path, mask_file_path, analyzed_data_path, threshold=10):
+    """
+    Process a single patient's MZP folder to crop and export volume and mask data.
+    Args:
+    - patient_number: the patient ID (e.g., '001')
+    - mzp_folder: the MZP folder name (e.g., 'MZP1')
+    - volume_file_path: path to the volume .nrrd file
+    - mask_file_path: path to the mask .nrrd file
+    - analyzed_data_path: base path for the output directory
+    - threshold: pixel intensity threshold for black image filtering
+    """
+    if not os.path.exists(volume_file_path) or not os.path.exists(mask_file_path):
+        raise FileNotFoundError("Volume or mask file does not exist.")
+
+    # Read the volume and mask data
+    volume_data, _ = nrrd.read(volume_file_path)
+    mask_data, _ = nrrd.read(mask_file_path)
+
+    # Define output folder for the current MZP
+    output_folder = analyzed_data_path
+    
+    # Convert `00#` back to `Patient#`
+    patient_folder_name = f"Patient{int(patient_number)}"
+    # Export to .tif
+    output_volume_dir = os.path.join(output_folder, "volume", patient_folder_name, mzp_folder)
+    output_mask_dir = os.path.join(output_folder, "mask", patient_folder_name, mzp_folder)
+    if not os.path.exists(output_volume_dir):
+        os.makedirs(output_volume_dir)
+    if not os.path.exists(output_mask_dir):
+        os.makedirs(output_mask_dir)
+    
+    export_to_tif_with_threshold(volume_data, mask_data, output_volume_dir, output_mask_dir, threshold=threshold)
+
+import nrrd
+import h5py
+import os
+import argparse
+
+def convert_nrrd_to_h5(nrrd_file):
+    # Read NRRD file
+    data, header = nrrd.read(nrrd_file)
+    
+    # Generate output filename
+    h5_file = os.path.splitext(nrrd_file)[0] + ".h5"
+
+    # Write to HDF5 file
+    with h5py.File(h5_file, "w") as h5f:
+        h5f.create_dataset("data", data=data)
+        
+        # Store metadata as attributes
+        metadata = h5f.create_group("metadata")
+        for key, value in header.items():
+            metadata.attrs[key] = str(value)  # Convert values to string to avoid type issues
+
+
