@@ -572,10 +572,14 @@ import json
 from scipy.ndimage import uniform_filter, gaussian_filter
 
 def export_tif_to_npz(input_tif_volume_folder, input_tif_mask_folder, original_height, original_width):
+    
     output_npz_folder = '../data/npz_files/augmented_train'  # Carpeta para guardar los archivos .npz
     annotations_file = './videos_first_batch_json.json'
-
+    
     os.makedirs(output_npz_folder, exist_ok=True)  # Crear la carpeta de salida si no existe
+    
+    target_height, target_width = 512, 512
+    
 
     scale = min(target_width / original_width, target_height / original_height)
     new_width = int(original_width * scale)
@@ -671,8 +675,8 @@ def export_tif_to_npz(input_tif_volume_folder, input_tif_mask_folder, original_h
             print(f"Tipo de normalización desconocido: {normalization_type}")
             break
 
-    #frame_key = frame_key = image_name.replace(".jpg", "")
-    #scaled_coords = coords_dict.get(frame_key, np.array([]))
+        #frame_key = frame_key = image_name.replace(".tif", "")
+        #scaled_coords = coords_dict.get(frame_key, np.array([]))
     # Transformar en mapas de probabilidad (opcional)
     #image_prob = sigmoid(image)  # Aplicar sigmoide a la imagen
     #mask_prob = sigmoid(mask)    # Aplicar sigmoide a la máscara
@@ -680,7 +684,6 @@ def export_tif_to_npz(input_tif_volume_folder, input_tif_mask_folder, original_h
     # Generar un nombre único para cada archivo .npz en formato frame_0001, frame_0002, etc.
         output_npz_name = f"frame_{frame_counter:04d}.npz"
         output_npz_path = os.path.join(output_npz_folder, output_npz_name)
-
     # Guardar el archivo .npz con claves "image" y "label"
 
     #print("Ejemplo de frame_key en coords_dict:", list(coords_dict.keys())[:5])  # Claves en coords_dict
@@ -688,8 +691,8 @@ def export_tif_to_npz(input_tif_volume_folder, input_tif_mask_folder, original_h
 
 
         try:
-            np.savez_compressed(output_npz_path, image=image, label=mask, insertion_coords=scaled_coords)  # Agregar _prob
-            print(f"Archivo guardado: {output_npz_name}")
+            np.savez_compressed(output_npz_path, image=image, label=mask)  # Agregar _prob
+            #print(f"Archivo guardado: {output_npz_name}")
         except Exception as e:
             print(f"Error al guardar el archivo {output_npz_name}: {e}")
             continue
@@ -697,12 +700,12 @@ def export_tif_to_npz(input_tif_volume_folder, input_tif_mask_folder, original_h
         # Incrementar el contador
         frame_counter += 1
 
-    print("Proceso completado.")
+    #print("Proceso completado.")
 
-    data = np.load("./npz_files/train/frame_0001.npz")
-    print("Imagen shape:", data["image"].shape)
-    print("Máscara shape:", data["label"].shape)
-    print("Coordenadas escaladas:", data["insertion_coords"])
+    #data = np.load("./npz_files/train/frame_0001.npz")
+    #print("Imagen shape:", data["image"].shape)
+    #print("Máscara shape:", data["label"].shape)
+    #print("Coordenadas escaladas:", data["insertion_coords"])
 
 
 
