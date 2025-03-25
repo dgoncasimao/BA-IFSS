@@ -430,20 +430,20 @@ def export_to_tif_with_threshold(volume_data, mask_data, output_dir_volume, outp
             continue
         
         # Normalize the slices to range [0, 255]
-        volume_normalized = ((cropped_volume - np.min(cropped_volume)) /
-                            (np.ptp(cropped_volume) + 1e-5) * 255).astype(np.uint8)
-        mask_normalized = ((cropped_mask - np.min(cropped_mask)) /
-                          (np.ptp(cropped_mask) + 1e-5) * 255).astype(np.uint8)
+        #volume_normalized = ((cropped_volume - np.min(cropped_volume)) /
+                            #(np.ptp(cropped_volume) + 1e-5) * 255).astype(np.uint8)
+        #mask_normalized = ((cropped_mask - np.min(cropped_mask)) /
+                          #(np.ptp(cropped_mask) + 1e-5) * 255).astype(np.uint8)
         
         # Normalize the slices to range [0, 255]
-        volume_normalized = ((slice_volume - np.min(slice_volume)) /
-                            (np.ptp(slice_volume) + 1e-5) * 255).astype(np.uint8)
+        #volume_normalized = ((slice_volume - np.min(slice_volume)) /
+                            #(np.ptp(slice_volume) + 1e-5) * 255).astype(np.uint8)
         mask_normalized = ((slice_mask - np.min(slice_mask)) /
                           (np.ptp(slice_mask) + 1e-5) * 255).astype(np.uint8)
-        
+        mask_scaled = (cropped_volume * 255).astype(np.uint8)
         # Resize with padding to 512x512
-        volume_resized = resize_with_padding(volume_normalized, target_size=(512, 512))
-        mask_resized = resize_with_padding(mask_normalized, target_size=(512, 512))
+        volume_resized = resize_with_padding(cropped_volume, target_size=(512, 512))
+        mask_resized = resize_with_padding(cropped_mask, target_size=(512, 512))
 
         # Save slices as .tif files
         volume_path = os.path.join(output_dir_volume, f"frame_{exported_count:05d}.tif")
@@ -573,7 +573,7 @@ from scipy.ndimage import uniform_filter, gaussian_filter
 
 def export_tif_to_npz(input_tif_volume_folder, input_tif_mask_folder, original_height, original_width):
     
-    output_npz_folder = '../data/npz_files/augmented_train'  # Carpeta para guardar los archivos .npz
+    output_npz_folder = '../data/npz_files/test'  # Carpeta para guardar los archivos .npz
     annotations_file = './videos_first_batch_json.json'
     
     os.makedirs(output_npz_folder, exist_ok=True)  # Crear la carpeta de salida si no existe
@@ -623,7 +623,7 @@ def export_tif_to_npz(input_tif_volume_folder, input_tif_mask_folder, original_h
 
 
     # Contador global para nombres de archivos
-    frame_counter = 1
+    frame_counter = 0
 
     # Parámetro para elegir el tipo de normalización ('minmax', 'zscore', 'log', 'clipping', 'local_contrast', 'none')
     normalization_type = "zscore"  # Cambiar a otro método según sea necesario
@@ -692,7 +692,7 @@ def export_tif_to_npz(input_tif_volume_folder, input_tif_mask_folder, original_h
 
         try:
             np.savez_compressed(output_npz_path, image=image, label=mask)  # Agregar _prob
-            #print(f"Archivo guardado: {output_npz_name}")
+            print(f"Archivo guardado: {output_npz_name}")
         except Exception as e:
             print(f"Error al guardar el archivo {output_npz_name}: {e}")
             continue
