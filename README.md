@@ -1,7 +1,7 @@
 # BA-IFSS: Bachelor Thesis Baseline Experiments
 
 > **⚠️ IMPORTANT NOTE:**
-> This repository contains the source code for the **baseline models** (IFSS-Net, VGG, TransUNet) and early experimental runs analyzed in the Bachelor Thesis.
+> This repository contains the source code for the **baseline models** (IFSS-Net, VGG) and early experimental runs analyzed in the Bachelor Thesis.
 >
 > For the **final End-to-End Pipeline** using the **SegFormer** architecture (which achieved the best performance), please visit the main repository:
 > 👉 **[dgoncasimao/segformer](https://github.com/dgoncasimao/segformer)**
